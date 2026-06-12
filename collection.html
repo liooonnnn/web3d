@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>디지털 헤리티지 컬렉션 | Digital Heritage</title>
+  <meta name="description" content="디지털 헤리티지 큐레이터팀이 3D 스캔한 유물 컬렉션" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f2ed;
+      --surface: #ffffff;
+      --border: #e2d9cc;
+      --text-primary: #1c1710;
+      --text-secondary: #5c4e3a;
+      --text-muted: #9a8c7c;
+      --accent: #7a5c14;
+      --accent-mid: #b8962a;
+      --accent-light: #d4b86a;
+      --accent-glow: rgba(122,92,20,0.10);
+      --shadow: 0 4px 20px rgba(60,40,10,0.10);
+      --shadow-lg: 0 12px 40px rgba(60,40,10,0.16);
+      --ease: cubic-bezier(0.4,0,0.2,1);
+      --header-h: 56px;
+      --strip-h: 120px;
+      --info-w: 360px;
+    }
+
+    html, body { width:100%; height:100%; overflow:hidden; }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      position: fixed;
+      top:0; left:0; right:0; z-index:300;
+      height: var(--header-h);
+      display:flex; align-items:center;
+      padding: 0 32px;
+      background: rgba(245,242,237,0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+    .logo-icon {
+      width:32px; height:32px;
+      background: linear-gradient(135deg,var(--accent),var(--accent-light));
+      border-radius:8px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:16px;
+    }
+    .logo-words { display:flex; flex-direction:column; line-height:1.2; }
+    .logo-en { font-family:'Cinzel',serif; font-size:11px; font-weight:600; color:var(--accent); letter-spacing:0.1em; }
+    .logo-kr { font-size:10px; color:var(--text-muted); }
+    .header-nav { margin-left:auto; display:flex; gap:4px; }
+    .header-nav a { font-size:13px; font-weight:500; color:var(--text-secondary); text-decoration:none; padding:6px 14px; border-radius:7px; transition:all 0.2s; }
+    .header-nav a:hover, .header-nav a.active { color:var(--accent); background:var(--accent-glow); }
+
+    /* ─── CARDS STRIP ─── */
+    .cards-strip {
+      position: fixed;
+      top: var(--header-h); left:0; right:0; z-index:200;
+      height: var(--strip-h);
+      display:flex; align-items:center; justify-content:center; gap:20px;
+      padding: 0 32px;
+      background: rgba(245,242,237,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .artifact-trigger {
+      height: 82px;
+      width: clamp(210px,26vw,320px);
+      cursor:pointer; outline:none; flex-shrink:0;
+    }
+    .trigger-card {
+      height:100%;
+      border-radius:12px;
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow);
+      display:flex; align-items:center; gap:12px;
+      padding: 0 14px;
+      transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease), border-color 0.25s, background 0.25s;
+      background: var(--surface);
+    }
+    .artifact-trigger:hover .trigger-card,
+    .artifact-trigger.active .trigger-card { transform:translateY(-3px); box-shadow:var(--shadow-lg); }
+    [data-id="roof-tile"]:hover .trigger-card,
+    [data-id="roof-tile"].active .trigger-card { border-color:#b8962a; background:#fffbf3; }
+    [data-id="celadon-teapot"]:hover .trigger-card,
+    [data-id="celadon-teapot"].active .trigger-card { border-color:#4a9cb0; background:#f3fafd; }
+
+    .trigger-thumb {
+      flex-shrink:0; width:54px; height:54px;
+      border-radius:9px;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+      position:relative;
+    }
+    [data-id="roof-tile"] .trigger-thumb { background:linear-gradient(135deg,#fdf2d8,#f5e0a8); }
+    [data-id="celadon-teapot"] .trigger-thumb { background:linear-gradient(135deg,#daf0f8,#b0dcea); }
+    .trigger-thumb img { width:80%; height:80%; object-fit:contain; filter:drop-shadow(0 3px 6px rgba(60,30,0,0.2)); transition:transform 0.3s var(--ease); }
+    .artifact-trigger:hover .trigger-thumb img { transform:scale(1.12) translateY(-2px); }
+
+    .dot-3d {
+      position:absolute; top:5px; right:5px;
+      width:7px; height:7px; border-radius:50%;
+      background:#3aaa6a;
+      box-shadow:0 0 6px rgba(58,170,106,0.7);
+      animation: pulse3d 2s ease-in-out infinite;
+    }
+    @keyframes pulse3d { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:0.5} }
+
+    .trigger-text { flex:1; min-width:0; }
+    .trigger-accession { font-family:'Cinzel',serif; font-size:9px; letter-spacing:0.12em; color:var(--text-muted); margin-bottom:2px; }
+    .trigger-name-kr { font-family:'Noto Serif KR',serif; font-size:14px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .trigger-name-hanja { font-size:10px; color:var(--text-muted); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .trigger-period { display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:100px; }
+    [data-id="roof-tile"] .trigger-period { background:#f5e8cb; color:#7a5010; }
+    [data-id="celadon-teapot"] .trigger-period { background:#d0ecf4; color:#1a5a6a; }
+
+    .trigger-arrow { flex-shrink:0; font-size:12px; color:var(--accent); opacity:0; transform:translateX(-4px); transition:opacity 0.2s,transform 0.2s; }
+    .artifact-trigger:hover .trigger-arrow,
+    .artifact-trigger.active .trigger-arrow { opacity:1; transform:translateX(0); }
+
+    /* ─── MAIN AREA ─── */
+    .main-area {
+      position: fixed;
+      top: calc(var(--header-h) + var(--strip-h));
+      left:0; right:0; bottom:0;
+      display:flex;
+    }
+
+    /* ─── VIEWER COLUMN ─── */
+    .viewer-col {
+      flex:1; min-width:0;
+      position:relative;
+      background: #f0ece4;
+      overflow:hidden;
+    }
+
+    /* model-viewer always present, fills full column */
+    model-viewer {
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      --poster-color: transparent;
+    }
+
+    /* OVERLAY on top of model-viewer — shown when no model selected */
+    .viewer-overlay {
+      position:absolute; inset:0; z-index:10;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      gap:18px; text-align:center;
+      background: linear-gradient(160deg, #fdf7ee 0%, #ede5d4 100%);
+      pointer-events:none;
+      transition: opacity 0.5s ease;
+    }
+    .viewer-overlay.faded { opacity:0; pointer-events:none; }
+
+    .overlay-icon { font-size:52px; animation:float 4s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+    .overlay-title { font-family:'Noto Serif KR',serif; font-size:20px; font-weight:500; color:var(--text-secondary); }
+    .overlay-sub { font-size:13px; color:var(--text-muted); line-height:1.7; }
+
+    /* Loading spinner */
+    .spinner-wrap {
+      position:absolute; inset:0; z-index:11;
+      display:none; align-items:center; justify-content:center;
+      background: rgba(240,236,228,0.7);
+    }
+    .spinner-wrap.show { display:flex; }
+    .spinner {
+      width:48px; height:48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius:50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* ─── INFO COLUMN ─── */
+    .info-col {
+      flex: 0 0 var(--info-w);
+      width: var(--info-w);
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display:flex; flex-direction:column;
+      transform: translateX(100%);
+      transition: transform 0.5s var(--ease);
+    }
+    .info-col.open { transform:translateX(0); }
+
+    .info-scroll {
+      flex:1; overflow-y:auto;
+      padding: 24px 22px;
+      display:flex; flex-direction:column; gap:20px;
+      scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+    }
+    .info-scroll::-webkit-scrollbar { width:4px; }
+    .info-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+    .info-accession { font-family:'Cinzel',serif; font-size:10px; letter-spacing:0.14em; color:var(--text-muted); margin-bottom:5px; }
+    .info-name-kr { font-family:'Noto Serif KR',serif; font-size:22px; font-weight:600; line-height:1.3; color:var(--text-primary); margin-bottom:3px; }
+    .info-name-hanja { font-size:12px; color:var(--text-muted); margin-bottom:12px; }
+
+    .badges { display:flex; flex-wrap:wrap; gap:6px; }
+    .badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; padding:4px 11px; border-radius:100px; }
+    .badge-baekje { background:#f5e8cb; color:#7a5010; }
+    .badge-goryeo { background:#d0ecf4; color:#1a5a6a; }
+    .badge-3dok { background:#e6f8ef; color:#2a7a4a; border:1px solid #a0d8b8; }
+
+    .hdivider { height:1px; background:var(--border); margin:0 -22px; }
+
+    .section-hd { font-size:10px; font-weight:700; letter-spacing:0.1em; color:var(--text-muted); text-transform:uppercase; margin-bottom:10px; }
+
+    .spec-grid { border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .spec-row { display:flex; border-bottom:1px solid var(--border); }
+    .spec-row:last-child { border-bottom:none; }
+    .spec-key { flex:0 0 68px; padding:8px 11px; background:#faf7f2; color:var(--text-muted); font-size:11.5px; font-weight:600; }
+    .spec-val { flex:1; padding:8px 11px; background:var(--surface); color:var(--text-secondary); font-size:11.5px; line-height:1.5; }
+
+    .desc-body { background:#faf7f2; border:1px solid var(--border); border-radius:10px; padding:16px; font-size:12.5px; line-height:1.9; color:var(--text-secondary); }
+
+    .info-bottom { padding:14px 18px; border-top:1px solid var(--border); flex-shrink:0; }
+    .ws-btn {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:13px 16px;
+      background:linear-gradient(135deg,var(--accent),var(--accent-mid));
+      color:white; text-decoration:none;
+      border-radius:10px; font-size:12.5px; font-weight:600;
+      transition:transform 0.2s, box-shadow 0.2s;
+    }
+    .ws-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(120,90,0,0.28); }
+
+    /* ─── RESPONSIVE ─── */
+    @media(max-width:700px){
+      :root{ --info-w:100%; --strip-h:100px; }
+      .main-area{ flex-direction:column; }
+      .info-col{ flex:0 0 240px; width:100%; border-left:none; border-top:1px solid var(--border); transform:translateY(100%); }
+      .info-col.open{ transform:translateY(0); }
+      .header-nav{ display:none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <a href="intro.html" class="logo">
+    <div class="logo-icon">🏛️</div>
+    <div class="logo-words">
+      <span class="logo-en">DIGITAL HERITAGE</span>
+      <span class="logo-kr">디지털 헤리티지 큐레이터</span>
+    </div>
+  </a>
+  <nav class="header-nav">
+    <a href="collection.html" class="active">컬렉션</a>
+    <a href="index.html">3D 워크스페이스</a>
+  </nav>
+</header>
+
+<!-- CARDS STRIP -->
+<div class="cards-strip">
+
+  <div class="artifact-trigger" data-id="roof-tile" tabindex="0"
+       onmouseenter="pick('roof-tile')" onfocus="pick('roof-tile')"
+       role="button" aria-label="수막새 선택">
+    <div class="trigger-card">
+      <div class="trigger-thumb">
+        <img src="artifact_roof_tile.png" alt="수막새" />
+        <span class="dot-3d"></span>
+      </div>
+      <div class="trigger-text">
+        <div class="trigger-accession">No. 18-1</div>
+        <div class="trigger-name-kr">수막새</div>
+        <div class="trigger-name-hanja">八葉蓮花紋瓦當</div>
+        <span class="trigger-period">백제</span>
+      </div>
+      <span class="trigger-arrow">▼</span>
+    </div>
+  </div>
+
+  <div class="artifact-trigger" data-id="celadon-teapot" tabindex="0"
+       onmouseenter="pick('celadon-teapot')" onfocus="pick('celadon-teapot')"
+       role="button" aria-label="청자 주전자 선택">
+    <div class="trigger-card">
+      <div class="trigger-thumb">
+        <img src="artifact_celadon_teapot.png" alt="청자 주전자" />
+        <span class="dot-3d"></span>
+      </div>
+      <div class="trigger-text">
+        <div class="trigger-accession">No. 81</div>
+        <div class="trigger-name-kr">청자 주전자</div>
+        <div class="trigger-name-hanja">靑瓷酒煎子</div>
+        <span class="trigger-period">고려시대</span>
+      </div>
+      <span class="trigger-arrow">▼</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- MAIN AREA -->
+<div class="main-area">
+
+  <!-- VIEWER -->
+  <div class="viewer-col">
+
+    <!-- model-viewer: always in DOM, always sized -->
+    <model-viewer
+      id="mv"
+      camera-controls
+      auto-rotate
+      auto-rotate-delay="600"
+      rotation-per-second="12deg"
+      shadow-intensity="1.5"
+      shadow-softness="1"
+      exposure="1.1"
+      tone-mapping="commerce"
+      alt="3D 유물 모델"
+    ></model-viewer>
+
+    <!-- Overlay (initial / no selection) -->
+    <div class="viewer-overlay" id="overlay">
+      <div class="overlay-icon">🏺</div>
+      <div class="overlay-title">유물 카드에 마우스를 올려보세요</div>
+      <div class="overlay-sub">위의 카드를 선택하면<br/>3D 모델이 이 화면에 표시됩니다.</div>
+    </div>
+
+    <!-- Loading spinner -->
+    <div class="spinner-wrap" id="spinner">
+      <div class="spinner"></div>
+    </div>
+
+  </div>
+
+  <!-- INFO PANEL -->
+  <div class="info-col" id="info-col">
+    <div class="info-scroll">
+
+      <div>
+        <div class="info-accession" id="i-acc">No. —</div>
+        <div class="info-name-kr"   id="i-kr">—</div>
+        <div class="info-name-hanja" id="i-hanja">—</div>
+        <div class="badges">
+          <span class="badge" id="i-period">—</span>
+          <span class="badge badge-3dok">● 3D 로드됨</span>
+        </div>
+      </div>
+
+      <div class="hdivider"></div>
+
+      <div>
+        <div class="section-hd">📋 유물 제원</div>
+        <div class="spec-grid" id="i-spec"></div>
+      </div>
+
+      <div class="hdivider"></div>
+
+      <div>
+        <div class="section-hd">📝 상세 설명</div>
+        <div class="desc-body" id="i-desc"></div>
+      </div>
+
+    </div>
+    <div class="info-bottom">
+      <a href="index.html" class="ws-btn">
+        <span>🔬 큐레이터 워크스페이스 열기</span>
+        <span>→</span>
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DATA = {
+  'roof-tile': {
+    acc:'No. 18-1', kr:'수막새', hanja:'八葉蓮花紋瓦當 (팔엽연화문와당)',
+    period:'백제', periodCls:'badge-baekje',
+    glb:'41_deci.glb',
+    specs:[
+      ['명칭','8엽연화문와당'],['소장번호','18-1'],['시기','백제'],
+      ['색조','연화색, 흑색이 약간 보임'],['태토','고운편이며 다량의 모래 포함'],
+      ['문양','8엽 연화문, 가장자리 파손, 연자 7과'],
+      ['지름','15.5 cm'],['두께','3.4 cm'],
+    ],
+    desc:`이 수막새는 <strong>백제 시대</strong>의 대표적인 기와 장식품으로, 공식 명칭은 <strong>8엽연화문와당(八葉蓮花紋瓦當)</strong>입니다.<br><br>
+중앙에 8개의 연꽃잎 문양이 아름답게 배치되어 있으며, 가장자리 일부가 파손된 상태이나 핵심 문양은 잘 보존되어 있습니다. 연자(蓮子)는 7과가 확인됩니다.<br><br>
+태토는 고운 편이며 다량의 모래가 포함되어 있습니다. 백제 기와 제작 기술의 정교함을 잘 보여주는 유물입니다.`
+  },
+  'celadon-teapot': {
+    acc:'No. 81', kr:'청자 주전자', hanja:'靑瓷酒煎子 (청자주전자)',
+    period:'고려시대', periodCls:'badge-goryeo',
+    glb:'Untitled.glb',
+    specs:[
+      ['명칭','청자 주전자'],['소장번호','81'],['시기','고려시대 추정'],
+      ['색조','녹청색의 유약'],['바닥','평저(平底)'],
+      ['몸체','난형, 손잡이 소실, 주둥이 길게 뻗음'],
+      ['굽지름','9.6 cm'],['높이','16.1 cm'],['구경','3.27 cm'],
+    ],
+    desc:`이 청자 주전자는 <strong>고려시대</strong> 제작된 것으로 추정되는 도자기로, 공식 명칭은 <strong>청자 주전자(靑瓷酒煎子)</strong>입니다.<br><br>
+몸체는 <strong>난형(卵形)</strong>이며, 손잡이는 소실된 상태입니다. 주둥이가 길게 뻗어 있으며 좁은 구연부에 뚜껑받침이 있습니다.<br><br>
+<strong>녹청색 유약</strong>이 고려 청자 특유의 맑은 비색(翡色)에 가깝게 발색됩니다.`
+  }
+};
+
+const mv      = document.getElementById('mv');
+const overlay = document.getElementById('overlay');
+const spinner = document.getElementById('spinner');
+const infoCol = document.getElementById('info-col');
+let current   = null;
+
+function pick(id) {
+  if (current === id) return;
+  current = id;
+  const d = DATA[id];
+
+  // ── trigger card highlight ──
+  document.querySelectorAll('.artifact-trigger').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === id)
+  );
+
+  // ── show spinner, hide overlay ──
+  spinner.classList.add('show');
+  overlay.classList.add('faded');
+
+  // ── set GLB source ──
+  mv.setAttribute('src', d.glb);
+
+  // ── wait for model-viewer load event ──
+  const onLoad = () => {
+    spinner.classList.remove('show');
+    mv.removeEventListener('error', onErr);
+  };
+  const onErr = () => {
+    spinner.classList.remove('show');
+    overlay.textContent = '3D 파일을 불러올 수 없습니다.';
+    overlay.classList.remove('faded');
+    mv.removeEventListener('load', onLoad);
+  };
+  mv.addEventListener('load',  onLoad, { once: true });
+  mv.addEventListener('error', onErr,  { once: true });
+
+  // ── update info panel ──
+  document.getElementById('i-acc').textContent   = d.acc;
+  document.getElementById('i-kr').textContent    = d.kr;
+  document.getElementById('i-hanja').textContent = d.hanja;
+  document.getElementById('i-desc').innerHTML    = d.desc;
+
+  const bp = document.getElementById('i-period');
+  bp.textContent = d.period;
+  bp.className   = 'badge ' + d.periodCls;
+
+  document.getElementById('i-spec').innerHTML = d.specs
+    .map(([k,v])=>`<div class="spec-row"><div class="spec-key">${k}</div><div class="spec-val">${v}</div></div>`)
+    .join('');
+
+  infoCol.classList.add('open');
+}
+
+// keyboard
+document.querySelectorAll('.artifact-trigger').forEach(el =>
+  el.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' ') pick(el.dataset.id); })
+);
+</script>
+</body>
+</html>
